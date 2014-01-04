@@ -1,0 +1,20 @@
+
+panorama - downsample spherical panorama images
+Written in 2014 by <Ahmet Inan> <xdsopl@googlemail.com>
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.
+You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+
+wrote this from the need to create low resolution spherical environment maps from high quality / high resolution panorama images with lesser pinch effect on the poles.
+
+there is of course the polar distortion module in gimp but it is very cumbersome to do it that way and it destroys a lot of detail.
+
+only P6 ppm in srgb and 8bit per channel images for output and input supported at the moment.
+
+usage is simple ("wxh" output resolution, "input.ppm" input image):
+
+# ./panorama wxh input.ppm
+
+this will create an "output.ppm" file.
+
+w and h should be smaller or equal to the input
+
