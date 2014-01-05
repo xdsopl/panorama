@@ -32,6 +32,14 @@ struct rgb {
 	float r, g, b;
 };
 
+struct uv {
+	float u, v;
+};
+
+struct xyz {
+	float x, y, z;
+};
+
 struct image {
 	struct rgb *buffer;
 	int width, height, total;
@@ -55,19 +63,114 @@ struct image *new_image(char *name, int width, int height)
 	return image;
 }
 
+struct uv uv_sphere(struct xyz v)
+{
+	return (struct uv) {
+		0.5f + atan2f(v.z, v.x) / (2.0f * M_PI),
+		acosf(v.y) / M_PI
+	};
+}
+
+struct xyz xyz_sphere(struct uv v)
+{
+	return (struct xyz) {
+		sinf(v.v * M_PI) * cosf((v.u - 0.5f) * 2.0f * M_PI),
+		cosf(v.v * M_PI),
+		sinf(v.v * M_PI) * sinf((v.u - 0.5f) * 2.0f * M_PI)
+	};
+}
+
+struct xyz xyz_smul(float a, struct xyz v)
+{
+	return (struct xyz) { a * v.x, a * v.y, a * v.z };
+}
+
+struct rgb rgb_smul(float a, struct rgb v)
+{
+	return (struct rgb) { a * v.r, a * v.g, a * v.b };
+}
+
+struct uv uv_smul(float a, struct uv v)
+{
+	return (struct uv) { a * v.u, a * v.v };
+}
+
+struct rgb rgb_add(struct rgb a, struct rgb b)
+{
+	return (struct rgb) { a.r + b.r, a.g + b.g, a.b + b.b };
+}
+
+struct xyz xyz_add(struct xyz a, struct xyz b)
+{
+	return (struct xyz) { a.x + b.x, a.y + b.y, a.z + b.z };
+}
+
+float xyz_length(struct xyz v)
+{
+	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+float uv_length(struct uv v)
+{
+	return sqrtf(v.u * v.u + v.v * v.v);
+}
+
+struct xyz xyz_normalize(struct xyz v)
+{
+	return xyz_smul(1.0f / xyz_length(v), v);
+}
+
+struct xyz xyz_orthogonal(struct xyz v)
+{
+	struct xyz ox = { 0.0f, -v.z, v.y };
+	struct xyz oy = { v.z, 0.0f, -v.x };
+	struct xyz oz = { -v.y, v.x, 0.0f };
+	struct xyz o = fabsf(v.x) < fabsf(v.y) ? (fabsf(v.x) < fabsf(v.z) ? ox : oz) : (fabsf(v.y) < fabsf(v.z) ? oy : oz);
+	return xyz_normalize(o);
+}
+
+struct xyz xyz_cross(struct xyz a, struct xyz b)
+{
+	return (struct xyz) {
+		a.y * b.z - a.z * b.y,
+		a.z * b.x - a.x * b.z,
+		a.x * b.y - a.y * b.x
+	};
+}
+
 void downsample(struct image *output, struct image *input)
 {
 	int ow = output->width;
 	int oh = output->height;
 	int iw = input->width;
 	int ih = input->height;
+	int radius = fmaxf(iw / ow, ih / oh);
+	float delta = 1.0f / fminf(iw, ih);
+	// fprintf(stderr, "%d %f\n", radius, delta);
 	struct rgb *ob = output->buffer;
 	struct rgb *ib = input->buffer;
+	struct uv pol;
+	struct xyz car;
 	for (int oj = 0; oj < oh; oj++) {
-		int ij = (ih * oj) / oh;
+		pol.v = oj / (float)(oh - 1);
 		for (int oi = 0; oi < ow; oi++) {
-			int ii = (iw * oi) / ow;
-			ob[ow * oj + oi] = ib[iw * ij + ii];
+			pol.u = oi / (float)(ow - 1);
+			car = xyz_sphere(pol);
+			struct xyz orth0 = xyz_orthogonal(car);
+			struct xyz orth1 = xyz_cross(orth0, car);
+			int cnt = 0;
+			struct rgb sum = { 0.0f, 0.0f, 0.0f };
+			for (int aj = -radius; aj <= radius; aj++) {
+				for (int ai = -radius; ai <= radius; ai++) {
+					struct xyz ac = xyz_add(xyz_smul(delta * ai, orth0), xyz_smul(delta * aj, orth1));
+					struct uv ap = uv_sphere(xyz_normalize(xyz_add(car, ac)));
+					int ii = (iw - 1) * ap.u;
+					int ij = (ih - 1) * ap.v;
+					sum = rgb_add(sum, ib[iw * ij + ii]);
+					cnt++;
+				}
+			}
+			ob[ow * oj + oi] = rgb_smul(1.0f / cnt, sum);
 		}
 	}
 }
