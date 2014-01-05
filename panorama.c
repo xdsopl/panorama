@@ -149,19 +149,20 @@ void downsample(struct image *output, struct image *input)
 	// fprintf(stderr, "%d %f\n", radius, delta);
 	struct rgb *ob = output->buffer;
 	struct rgb *ib = input->buffer;
-	struct uv pol;
-	struct xyz car;
 	for (int oj = 0; oj < oh; oj++) {
-		pol.v = oj / (float)(oh - 1);
+		struct uv pol;
+		pol.v = oj / (float)oh;
+		int wight = fminf(8.0f, 1.0f / sinf(pol.v * M_PI));
+		//fprintf(stderr, "row: % 4d wight: % 2d\n", oj, wight);
 		for (int oi = 0; oi < ow; oi++) {
-			pol.u = oi / (float)(ow - 1);
-			car = xyz_sphere(pol);
+			pol.u = oi / (float)ow;
+			struct xyz car = xyz_sphere(pol);
 			struct xyz orth0 = xyz_orthogonal(car);
 			struct xyz orth1 = xyz_cross(orth0, car);
 			int cnt = 0;
 			struct rgb sum = { 0.0f, 0.0f, 0.0f };
-			for (int aj = -radius; aj <= radius; aj++) {
-				for (int ai = -radius; ai <= radius; ai++) {
+			for (int aj = -radius * wight; aj <= radius * wight; aj++) {
+				for (int ai = -radius * wight; ai <= radius * wight; ai++) {
 					struct xyz ac = xyz_add(xyz_smul(delta * ai, orth0), xyz_smul(delta * aj, orth1));
 					struct uv ap = uv_sphere(xyz_normalize(xyz_add(car, ac)));
 					int ii = (iw - 1) * ap.u;
