@@ -18,3 +18,5 @@ this will create an "output.ppm" file.
 
 w and h should be smaller or equal to the input
 
+be very patient, as the downsampler code is implemented very naively, doing a lot of redundant work and not optimized for speed.
+
