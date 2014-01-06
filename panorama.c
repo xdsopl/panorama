@@ -144,8 +144,8 @@ void downsample(struct image *output, struct image *input)
 	int oh = output->height;
 	int iw = input->width;
 	int ih = input->height;
-	int radius = fmaxf(iw / ow, ih / oh);
-	float delta = 1.0f / fminf(iw, ih);
+	int radius = fmaxf(iw / ow, ih / oh) / 2.0f;
+	float delta = 1.0f / fmaxf(iw / 2.0f, ih);
 	// fprintf(stderr, "%d %f\n", radius, delta);
 	struct rgb *ob = output->buffer;
 	struct rgb *ib = input->buffer;
