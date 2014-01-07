@@ -138,6 +138,12 @@ struct xyz xyz_cross(struct xyz a, struct xyz b)
 	};
 }
 
+float gauss(float x, float y, float radius)
+{
+	float sigma = radius / 3.0f;
+	return radius ? expf(- (x * x + y * y) / (2.0f * sigma * sigma)) / (2.0f * M_PI * sigma * sigma) : 1.0f;
+}
+
 void downsample(struct image *output, struct image *input)
 {
 	int ow = output->width;
@@ -159,19 +165,20 @@ void downsample(struct image *output, struct image *input)
 			struct xyz car = xyz_sphere(pol);
 			struct xyz orth0 = xyz_orthogonal(car);
 			struct xyz orth1 = xyz_cross(orth0, car);
-			int cnt = 0;
-			struct rgb sum = { 0.0f, 0.0f, 0.0f };
+			float kernel_sum = 0.0f;
+			struct rgb rgb_sum = { 0.0f, 0.0f, 0.0f };
 			for (int aj = -radius * wight; aj <= radius * wight; aj++) {
 				for (int ai = -radius * wight; ai <= radius * wight; ai++) {
 					struct xyz ac = xyz_add(xyz_smul(delta * ai, orth0), xyz_smul(delta * aj, orth1));
 					struct uv ap = uv_sphere(xyz_normalize(xyz_add(car, ac)));
 					int ii = (iw - 1) * ap.u;
 					int ij = (ih - 1) * ap.v;
-					sum = rgb_add(sum, ib[iw * ij + ii]);
-					cnt++;
+					float kernel = gauss(ai, aj, radius * wight);
+					rgb_sum = rgb_add(rgb_sum, rgb_smul(kernel, ib[iw * ij + ii]));
+					kernel_sum += kernel;
 				}
 			}
-			ob[ow * oj + oi] = rgb_smul(1.0f / cnt, sum);
+			ob[ow * oj + oi] = rgb_smul(1.0f / kernel_sum, rgb_sum);
 		}
 	}
 }
