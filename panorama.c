@@ -82,7 +82,7 @@ void downsample(struct image *output, struct image *input)
 			float weight_sum = 0.0f;
 			struct rgb rgb_sum = { 0.0f, 0.0f, 0.0f };
 			for (int ij = ij0; ij < ij1; ij++) {
-				float weight = sinf(M_PI * ij / ih);
+				float weight = sinf(M_PI * (ij + 0.5f) / ih);
 				for (int ii = ii0; ii < ii1; ii++) {
 					rgb_sum = rgb_smul_add(weight, ib[iw * ij + ii], rgb_sum);
 					weight_sum += weight;
