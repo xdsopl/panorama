@@ -161,7 +161,7 @@ void downsample(struct image *output, struct image *input)
 	int iw = input->width;
 	int ih = input->height;
 	int factor = fmaxf(iw / ow, ih / oh);
-	float delta = 4.0f / fminf(iw / 2.0f, ih);
+	float delta = M_PI / fminf(iw / 2.0f, ih);
 	// fprintf(stderr, "%d %f\n", factor, delta);
 	struct rgb *ob = output->buffer;
 	struct rgb *ib = input->buffer;

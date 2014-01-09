@@ -6,5 +6,6 @@ panorama: panorama.c
 
 test: panorama
 	./panorama 512x256 input.ppm
-	convert output.ppm /var/www/localhost/htdocs/panorama.jpg
+#convert output.ppm /var/www/localhost/htdocs/panorama.jpg
+	convert output.ppm ~/Downloads/panorama-$(shell date +%s).png
 
