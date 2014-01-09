@@ -171,8 +171,8 @@ void downsample(struct image *output, struct image *input)
 				for (int ai = -radius * weight; ai <= radius * weight; ai++) {
 					struct xyz ac = xyz_add(xyz_smul(delta * ai, orth0), xyz_smul(delta * aj, orth1));
 					struct uv ap = uv_sphere(xyz_normalize(xyz_add(car, ac)));
-					int ii = (iw - 1) * ap.u;
-					int ij = (ih - 1) * ap.v;
+					int ii = iw * ap.u;
+					int ij = ih * ap.v;
 					float kernel = gauss(ai, aj, radius * weight);
 					rgb_sum = rgb_add(rgb_sum, rgb_smul(kernel, ib[iw * ij + ii]));
 					kernel_sum += kernel;
