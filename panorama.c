@@ -231,7 +231,7 @@ struct image *read_ppm(char *name)
 		}
 		integer[i] = atoi(str);
 	}
-	if (!(integer[0]|integer[1]|integer[2])) {
+	if (!(integer[0] && integer[1] && integer[2])) {
 		fprintf(stderr, "could not read image file \"%s\".\n", name);
 		fclose(file);
 		return 0;
