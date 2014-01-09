@@ -32,14 +32,6 @@ struct rgb {
 	float r, g, b;
 };
 
-struct uv {
-	float u, v;
-};
-
-struct xyz {
-	float x, y, z;
-};
-
 struct image {
 	struct rgb *buffer;
 	int width, height, total;
@@ -63,85 +55,14 @@ struct image *new_image(char *name, int width, int height)
 	return image;
 }
 
-struct uv uv_sphere(struct xyz v)
+struct rgb rgb_smul_add(float a, struct rgb b, struct rgb c)
 {
-	return (struct uv) {
-		0.5f + atan2f(v.z, v.x) / (2.0f * M_PI),
-		acosf(v.y) / M_PI
-	};
+	return (struct rgb) { a * b.r + c.r, a * b.g + c.g, a * b.b + c.b };
 }
 
-struct xyz xyz_sphere(struct uv v)
+struct rgb rgb_sdiv(struct rgb a, float b)
 {
-	return (struct xyz) {
-		sinf(v.v * M_PI) * cosf((v.u - 0.5f) * 2.0f * M_PI),
-		cosf(v.v * M_PI),
-		sinf(v.v * M_PI) * sinf((v.u - 0.5f) * 2.0f * M_PI)
-	};
-}
-
-struct xyz xyz_smul(float a, struct xyz v)
-{
-	return (struct xyz) { a * v.x, a * v.y, a * v.z };
-}
-
-struct rgb rgb_smul(float a, struct rgb v)
-{
-	return (struct rgb) { a * v.r, a * v.g, a * v.b };
-}
-
-struct uv uv_smul(float a, struct uv v)
-{
-	return (struct uv) { a * v.u, a * v.v };
-}
-
-struct rgb rgb_add(struct rgb a, struct rgb b)
-{
-	return (struct rgb) { a.r + b.r, a.g + b.g, a.b + b.b };
-}
-
-struct xyz xyz_add(struct xyz a, struct xyz b)
-{
-	return (struct xyz) { a.x + b.x, a.y + b.y, a.z + b.z };
-}
-
-float xyz_length(struct xyz v)
-{
-	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
-float uv_length(struct uv v)
-{
-	return sqrtf(v.u * v.u + v.v * v.v);
-}
-
-struct xyz xyz_normalize(struct xyz v)
-{
-	return xyz_smul(1.0f / xyz_length(v), v);
-}
-
-struct xyz xyz_orthogonal(struct xyz v)
-{
-	struct xyz ox = { 0.0f, -v.z, v.y };
-	struct xyz oy = { v.z, 0.0f, -v.x };
-	struct xyz oz = { -v.y, v.x, 0.0f };
-	struct xyz o = fabsf(v.x) < fabsf(v.y) ? (fabsf(v.x) < fabsf(v.z) ? ox : oz) : (fabsf(v.y) < fabsf(v.z) ? oy : oz);
-	return xyz_normalize(o);
-}
-
-struct xyz xyz_cross(struct xyz a, struct xyz b)
-{
-	return (struct xyz) {
-		a.y * b.z - a.z * b.y,
-		a.z * b.x - a.x * b.z,
-		a.x * b.y - a.y * b.x
-	};
-}
-
-float gauss(float x, float y, float radius)
-{
-	float sigma = radius / 3.0f;
-	return radius ? expf(- (x * x + y * y) / (2.0f * sigma * sigma)) / (2.0f * M_PI * sigma * sigma) : 1.0f;
+	return (struct rgb) { a.r / b, a.g / b, a.b / b };
 }
 
 void downsample(struct image *output, struct image *input)
@@ -150,35 +71,24 @@ void downsample(struct image *output, struct image *input)
 	int oh = output->height;
 	int iw = input->width;
 	int ih = input->height;
-	int radius = fmaxf(iw / ow, ih / oh) / 2.0f;
-	float delta = 1.0f / fmaxf(iw / 2.0f, ih);
-	// fprintf(stderr, "%d %f\n", radius, delta);
 	struct rgb *ob = output->buffer;
 	struct rgb *ib = input->buffer;
 	for (int oj = 0; oj < oh; oj++) {
-		struct uv pol;
-		pol.v = oj / (float)oh;
-		int weight = fminf(8.0f, 1.0f / sinf(pol.v * M_PI));
-		//fprintf(stderr, "row: % 4d weight: % 2d\n", oj, weight);
+		int ij0 = oj * ih / oh;
+		int ij1 = (oj+1) * ih / oh;
 		for (int oi = 0; oi < ow; oi++) {
-			pol.u = oi / (float)ow;
-			struct xyz car = xyz_sphere(pol);
-			struct xyz orth0 = xyz_orthogonal(car);
-			struct xyz orth1 = xyz_cross(orth0, car);
-			float kernel_sum = 0.0f;
+			int ii0 = oi * iw / ow;
+			int ii1 = (oi+1) * iw / ow;
+			float weight_sum = 0.0f;
 			struct rgb rgb_sum = { 0.0f, 0.0f, 0.0f };
-			for (int aj = -radius * weight; aj <= radius * weight; aj++) {
-				for (int ai = -radius * weight; ai <= radius * weight; ai++) {
-					struct xyz ac = xyz_add(xyz_smul(delta * ai, orth0), xyz_smul(delta * aj, orth1));
-					struct uv ap = uv_sphere(xyz_normalize(xyz_add(car, ac)));
-					int ii = (iw - 1) * ap.u;
-					int ij = (ih - 1) * ap.v;
-					float kernel = gauss(ai, aj, radius * weight);
-					rgb_sum = rgb_add(rgb_sum, rgb_smul(kernel, ib[iw * ij + ii]));
-					kernel_sum += kernel;
+			for (int ij = ij0; ij < ij1; ij++) {
+				float weight = sinf(M_PI * ij / ih);
+				for (int ii = ii0; ii < ii1; ii++) {
+					rgb_sum = rgb_smul_add(weight, ib[iw * ij + ii], rgb_sum);
+					weight_sum += weight;
 				}
 			}
-			ob[ow * oj + oi] = rgb_smul(1.0f / kernel_sum, rgb_sum);
+			ob[ow * oj + oi] = rgb_sdiv(rgb_sum, weight_sum);
 		}
 	}
 }
