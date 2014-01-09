@@ -158,8 +158,8 @@ void downsample(struct image *output, struct image *input)
 	for (int oj = 0; oj < oh; oj++) {
 		struct uv pol;
 		pol.v = oj / (float)oh;
-		int wight = fminf(8.0f, 1.0f / sinf(pol.v * M_PI));
-		//fprintf(stderr, "row: % 4d wight: % 2d\n", oj, wight);
+		int weight = fminf(8.0f, 1.0f / sinf(pol.v * M_PI));
+		//fprintf(stderr, "row: % 4d weight: % 2d\n", oj, weight);
 		for (int oi = 0; oi < ow; oi++) {
 			pol.u = oi / (float)ow;
 			struct xyz car = xyz_sphere(pol);
@@ -167,13 +167,13 @@ void downsample(struct image *output, struct image *input)
 			struct xyz orth1 = xyz_cross(orth0, car);
 			float kernel_sum = 0.0f;
 			struct rgb rgb_sum = { 0.0f, 0.0f, 0.0f };
-			for (int aj = -radius * wight; aj <= radius * wight; aj++) {
-				for (int ai = -radius * wight; ai <= radius * wight; ai++) {
+			for (int aj = -radius * weight; aj <= radius * weight; aj++) {
+				for (int ai = -radius * weight; ai <= radius * weight; ai++) {
 					struct xyz ac = xyz_add(xyz_smul(delta * ai, orth0), xyz_smul(delta * aj, orth1));
 					struct uv ap = uv_sphere(xyz_normalize(xyz_add(car, ac)));
 					int ii = (iw - 1) * ap.u;
 					int ij = (ih - 1) * ap.v;
-					float kernel = gauss(ai, aj, radius * wight);
+					float kernel = gauss(ai, aj, radius * weight);
 					rgb_sum = rgb_add(rgb_sum, rgb_smul(kernel, ib[iw * ij + ii]));
 					kernel_sum += kernel;
 				}
